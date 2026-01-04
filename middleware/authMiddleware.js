@@ -1,10 +1,6 @@
 import admin from "firebase-admin";
 
-/* ================================
-   Firebase Admin Initialization
-================================ */
-
-// Initialize Firebase Admin using ENV variables (Railway safe)
+/* ================= FIREBASE ADMIN INIT ================= */
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
@@ -15,25 +11,23 @@ if (!admin.apps.length) {
   });
 }
 
-/* ================================
-   Auth Middleware
-================================ */
-
+/* ================= AUTH MIDDLEWARE ================= */
 export const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(" ")[1];
 
-    if (!token) {
-      return res.status(401).json({ msg: "No token provided ❌" });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "No token provided" });
     }
 
-    const decoded = await admin.auth().verifyIdToken(token);
+    const token = authHeader.split(" ")[1];
 
-    req.user = decoded; // attach logged user
+    const decoded = await admin.auth().verifyIdToken(token);
+    req.user = decoded;
+
     next();
   } catch (err) {
-    console.error("Auth Error:", err.message);
-    return res.status(401).json({ msg: "Invalid or expired token ❌" });
+    console.error("Auth error:", err.message);
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
