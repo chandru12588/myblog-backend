@@ -3,8 +3,8 @@ import mongoose from "mongoose";
 const commentSchema = new mongoose.Schema(
   {
     user: {
-      type: String,
-      required: true, // email from Firebase
+      type: String, // commenter email
+      required: true,
     },
     text: {
       type: String,
@@ -26,7 +26,6 @@ const blogSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // 🔍 SEO-friendly URL
     slug: {
       type: String,
       required: true,
@@ -40,22 +39,22 @@ const blogSchema = new mongoose.Schema(
       required: true,
     },
 
-    // 🖼 Cloudinary image URL
     image: {
       type: String,
       default: "",
     },
 
-    // 🔐 Blog author (Firebase email)
-    author: {
+    // 🔐 OWNER ID (Firebase UID) — MAIN SECURITY FIELD
+    authorId: {
       type: String,
       required: true,
       index: true,
     },
 
-    date: {
+    // Optional (for display only)
+    authorEmail: {
       type: String,
-      default: () => new Date().toDateString(),
+      required: true,
     },
 
     likes: {
@@ -63,12 +62,9 @@ const blogSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // 💬 Comments
     comments: [commentSchema],
   },
-  {
-    timestamps: true, // createdAt & updatedAt
-  }
+  { timestamps: true }
 );
 
 export default mongoose.model("Blog", blogSchema);

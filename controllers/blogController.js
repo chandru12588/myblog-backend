@@ -14,8 +14,11 @@ export const createBlog = async (req, res) => {
       slug,
       content: req.body.content,
       image: req.file ? req.file.path : "",
-      author: req.user.email,
-      date: new Date().toDateString(),
+
+      // 🔐 OWNER INFO (SECURE)
+      authorId: req.user.uid,
+      authorEmail: req.user.email,
+
       likes: 0,
       comments: [],
     });
@@ -35,7 +38,7 @@ export const createBlog = async (req, res) => {
 /* ================= GET ALL BLOGS ================= */
 export const getBlogs = async (_req, res) => {
   try {
-    const blogs = await Blog.find().sort({ _id: -1 });
+    const blogs = await Blog.find().sort({ createdAt: -1 });
     res.json(blogs);
   } catch (err) {
     res.status(500).json({ message: "Failed to load blogs ❌" });
@@ -53,7 +56,7 @@ export const getBlogById = async (req, res) => {
   }
 };
 
-/* ================= GET BLOG BY SLUG (SEO) ================= */
+/* ================= GET BLOG BY SLUG ================= */
 export const getBlogBySlug = async (req, res) => {
   try {
     const blog = await Blog.findOne({ slug: req.params.slug });
@@ -105,16 +108,16 @@ export const updateBlog = async (req, res) => {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ message: "Blog not found ❌" });
 
-    // 🔐 AUTHOR CHECK
-    if (blog.author !== req.user.email) {
-      return res.status(403).json({ message: "Not authorized ❌" });
+    // 🔐 OWNER CHECK (MAIN FIX)
+    if (blog.authorId !== req.user.uid) {
+      return res.status(403).json({ message: "Access denied ❌" });
     }
 
     blog.title = req.body.title || blog.title;
     blog.content = req.body.content || blog.content;
     blog.slug = slugify(blog.title, { lower: true });
 
-    // 🧹 DELETE OLD CLOUDINARY IMAGE
+    // 🧹 DELETE OLD IMAGE IF NEW IMAGE UPLOADED
     if (req.file && blog.image) {
       const publicId = blog.image.split("/").pop().split(".")[0];
       await cloudinary.uploader.destroy(publicId);
@@ -123,7 +126,6 @@ export const updateBlog = async (req, res) => {
 
     await blog.save();
     res.json({ message: "Blog updated ✅", blog });
-
   } catch (err) {
     res.status(500).json({
       message: "Update failed ❌",
@@ -138,12 +140,11 @@ export const deleteBlog = async (req, res) => {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ message: "Blog not found ❌" });
 
-    // 🔐 AUTHOR CHECK
-    if (blog.author !== req.user.email) {
-      return res.status(403).json({ message: "Not authorized ❌" });
+    // 🔐 OWNER CHECK (MAIN FIX)
+    if (blog.authorId !== req.user.uid) {
+      return res.status(403).json({ message: "Access denied ❌" });
     }
 
-    // 🧹 DELETE CLOUDINARY IMAGE
     if (blog.image) {
       const publicId = blog.image.split("/").pop().split(".")[0];
       await cloudinary.uploader.destroy(publicId);
@@ -151,7 +152,6 @@ export const deleteBlog = async (req, res) => {
 
     await blog.deleteOne();
     res.json({ message: "Blog deleted 🗑️" });
-
   } catch (err) {
     res.status(500).json({
       message: "Delete failed ❌",
