@@ -7,6 +7,10 @@ const cloudinary = cloudinaryModule.v2;
 /* ================= CREATE BLOG ================= */
 export const createBlog = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const slug = slugify(req.body.title, { lower: true });
 
     const blog = await Blog.create({
@@ -14,25 +18,17 @@ export const createBlog = async (req, res) => {
       slug,
       content: req.body.content,
       image: req.file ? req.file.path : "",
-
-      // 🔐 OWNER INFO
       authorId: req.user.uid,
       authorEmail: req.user.email,
-
       likes: 0,
       likedBy: [],
       comments: [],
     });
 
-    res.status(201).json({
-      message: "Blog added ✅",
-      blog,
-    });
+    res.status(201).json({ message: "Blog added ✅", blog });
   } catch (err) {
-    res.status(500).json({
-      message: "Blog creation failed ❌",
-      error: err.message,
-    });
+    console.error("CREATE BLOG ERROR:", err);
+    res.status(500).json({ message: "Blog creation failed ❌" });
   }
 };
 
@@ -73,6 +69,10 @@ export const getBlogBySlug = async (req, res) => {
 /* ================= LIKE BLOG ================= */
 export const likeBlog = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const blog = await Blog.findById(req.params.id);
     if (!blog)
       return res.status(404).json({ message: "Blog not found ❌" });
@@ -94,6 +94,7 @@ export const likeBlog = async (req, res) => {
     await blog.save();
     res.json(blog);
   } catch (err) {
+    console.error("LIKE BLOG ERROR:", err);
     res.status(500).json({ message: "Like failed ❌" });
   }
 };
@@ -101,6 +102,10 @@ export const likeBlog = async (req, res) => {
 /* ================= UNLIKE BLOG ================= */
 export const unlikeBlog = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const blog = await Blog.findById(req.params.id);
     if (!blog)
       return res.status(404).json({ message: "Blog not found ❌" });
@@ -121,6 +126,7 @@ export const unlikeBlog = async (req, res) => {
     await blog.save();
     res.json(blog);
   } catch (err) {
+    console.error("UNLIKE BLOG ERROR:", err);
     res.status(500).json({ message: "Unlike failed ❌" });
   }
 };
@@ -128,6 +134,10 @@ export const unlikeBlog = async (req, res) => {
 /* ================= ADD COMMENT ================= */
 export const addComment = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const blog = await Blog.findById(req.params.id);
     if (!blog)
       return res.status(404).json({ message: "Blog not found ❌" });
@@ -142,6 +152,7 @@ export const addComment = async (req, res) => {
     await blog.save();
     res.json(blog);
   } catch (err) {
+    console.error("COMMENT ERROR:", err);
     res.status(500).json({ message: "Comment failed ❌" });
   }
 };
@@ -149,11 +160,14 @@ export const addComment = async (req, res) => {
 /* ================= UPDATE BLOG ================= */
 export const updateBlog = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const blog = await Blog.findById(req.params.id);
     if (!blog)
       return res.status(404).json({ message: "Blog not found ❌" });
 
-    // 🔐 OWNER CHECK
     if (blog.authorId !== req.user.uid) {
       return res.status(403).json({ message: "Access denied ❌" });
     }
@@ -171,21 +185,22 @@ export const updateBlog = async (req, res) => {
     await blog.save();
     res.json({ message: "Blog updated ✅", blog });
   } catch (err) {
-    res.status(500).json({
-      message: "Update failed ❌",
-      error: err.message,
-    });
+    console.error("UPDATE BLOG ERROR:", err);
+    res.status(500).json({ message: "Update failed ❌" });
   }
 };
 
 /* ================= DELETE BLOG ================= */
 export const deleteBlog = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const blog = await Blog.findById(req.params.id);
     if (!blog)
       return res.status(404).json({ message: "Blog not found ❌" });
 
-    // 🔐 OWNER CHECK
     if (blog.authorId !== req.user.uid) {
       return res.status(403).json({ message: "Access denied ❌" });
     }
@@ -198,9 +213,7 @@ export const deleteBlog = async (req, res) => {
     await blog.deleteOne();
     res.json({ message: "Blog deleted 🗑️" });
   } catch (err) {
-    res.status(500).json({
-      message: "Delete failed ❌",
-      error: err.message,
-    });
+    console.error("DELETE BLOG ERROR:", err);
+    res.status(500).json({ message: "Delete failed ❌" });
   }
 };

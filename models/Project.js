@@ -1,27 +1,24 @@
 import mongoose from "mongoose";
 
 /* ================= COMMENTS ================= */
-const commentSchema = new mongoose.Schema(
-  {
-    uid: {
-      type: String,
-      required: true,
-    },
-    email: {
-      type: String,
-      required: true,
-    },
-    text: {
-      type: String,
-      required: true,
-    },
-    date: {
-      type: Date,
-      default: Date.now,
-    },
+const commentSchema = new mongoose.Schema({
+  uid: {
+    type: String,
+    required: true,
   },
-  { _id: false }
-);
+  email: {
+    type: String,
+    required: true,
+  },
+  text: {
+    type: String,
+    required: true,
+  },
+  date: {
+    type: Date,
+    default: Date.now,
+  },
+}); // ✅ _id ENABLED (DEFAULT)
 
 /* ================= LIKES ================= */
 const likedBySchema = new mongoose.Schema(
@@ -35,7 +32,7 @@ const likedBySchema = new mongoose.Schema(
       required: true,
     },
   },
-  { _id: false }
+  { _id: false } // OK for likes (no delete needed)
 );
 
 /* ================= PROJECT ================= */
@@ -57,9 +54,9 @@ const projectSchema = new mongoose.Schema(
     liveLink: String,
     githubLink: String,
 
-    /* 🔐 OWNER (SECURE) */
+    /* 🔐 OWNER */
     ownerId: {
-      type: String, // Firebase UID
+      type: String,
       required: true,
       index: true,
     },

@@ -3,6 +3,10 @@ import Project from "../models/Project.js";
 /* ================= CREATE PROJECT ================= */
 export const createProject = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const project = await Project.create({
       title: req.body.title,
       description: req.body.description,
@@ -25,10 +29,8 @@ export const createProject = async (req, res) => {
 
     res.status(201).json(project);
   } catch (err) {
-    res.status(500).json({
-      message: "Create failed ❌",
-      error: err.message,
-    });
+    console.error("CREATE PROJECT ERROR:", err);
+    res.status(500).json({ message: "Create failed ❌" });
   }
 };
 
@@ -50,12 +52,12 @@ export const getProjectById = async (req, res) => {
       return res.status(404).json({ message: "Project not found ❌" });
     }
 
-    // 👀 Increment views
     project.views += 1;
     await project.save();
 
     res.json(project);
   } catch (err) {
+    console.error("GET PROJECT ERROR:", err);
     res.status(500).json({ message: "Failed to load project ❌" });
   }
 };
@@ -63,12 +65,16 @@ export const getProjectById = async (req, res) => {
 /* ================= LIKE PROJECT ================= */
 export const likeProject = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const project = await Project.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ message: "Project not found ❌" });
     }
 
-    const alreadyLiked = project.likedBy.find(
+    const alreadyLiked = project.likedBy.some(
       (u) => u.uid === req.user.uid
     );
 
@@ -85,6 +91,7 @@ export const likeProject = async (req, res) => {
     await project.save();
     res.json(project);
   } catch (err) {
+    console.error("LIKE PROJECT ERROR:", err);
     res.status(500).json({ message: "Like failed ❌" });
   }
 };
@@ -92,6 +99,10 @@ export const likeProject = async (req, res) => {
 /* ================= UNLIKE PROJECT ================= */
 export const unlikeProject = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const project = await Project.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ message: "Project not found ❌" });
@@ -113,6 +124,7 @@ export const unlikeProject = async (req, res) => {
     await project.save();
     res.json(project);
   } catch (err) {
+    console.error("UNLIKE PROJECT ERROR:", err);
     res.status(500).json({ message: "Unlike failed ❌" });
   }
 };
@@ -120,6 +132,10 @@ export const unlikeProject = async (req, res) => {
 /* ================= ADD COMMENT ================= */
 export const addProjectComment = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const project = await Project.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ message: "Project not found ❌" });
@@ -135,6 +151,7 @@ export const addProjectComment = async (req, res) => {
     await project.save();
     res.json(project);
   } catch (err) {
+    console.error("ADD COMMENT ERROR:", err);
     res.status(500).json({ message: "Comment failed ❌" });
   }
 };
@@ -142,6 +159,10 @@ export const addProjectComment = async (req, res) => {
 /* ================= DELETE OWN COMMENT ================= */
 export const deleteProjectComment = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const { id, commentId } = req.params;
 
     const project = await Project.findById(id);
@@ -149,28 +170,33 @@ export const deleteProjectComment = async (req, res) => {
       return res.status(404).json({ message: "Project not found ❌" });
     }
 
-    const commentIndex = project.comments.findIndex(
+    const index = project.comments.findIndex(
       (c) =>
         c._id.toString() === commentId &&
         c.uid === req.user.uid
     );
 
-    if (commentIndex === -1) {
+    if (index === -1) {
       return res.status(403).json({ message: "Not authorized ❌" });
     }
 
-    project.comments.splice(commentIndex, 1);
+    project.comments.splice(index, 1);
     await project.save();
 
     res.json(project);
   } catch (err) {
+    console.error("DELETE COMMENT ERROR:", err);
     res.status(500).json({ message: "Delete comment failed ❌" });
   }
 };
 
-/* ================= UPDATE PROJECT (OWNER ONLY) ================= */
+/* ================= UPDATE PROJECT ================= */
 export const updateProject = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const project = await Project.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ message: "Project not found ❌" });
@@ -192,16 +218,21 @@ export const updateProject = async (req, res) => {
       project.image = req.file.path;
     }
 
-    const updated = await project.save();
-    res.json(updated);
+    await project.save();
+    res.json(project);
   } catch (err) {
+    console.error("UPDATE PROJECT ERROR:", err);
     res.status(500).json({ message: "Update failed ❌" });
   }
 };
 
-/* ================= DELETE PROJECT (OWNER ONLY) ================= */
+/* ================= DELETE PROJECT ================= */
 export const deleteProject = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized ❌" });
+    }
+
     const project = await Project.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ message: "Project not found ❌" });
@@ -214,6 +245,7 @@ export const deleteProject = async (req, res) => {
     await project.deleteOne();
     res.json({ message: "Project deleted 🗑️" });
   } catch (err) {
+    console.error("DELETE PROJECT ERROR:", err);
     res.status(500).json({ message: "Delete failed ❌" });
   }
 };

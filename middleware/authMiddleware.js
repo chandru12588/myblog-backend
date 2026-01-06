@@ -1,16 +1,16 @@
 import admin from "firebase-admin";
 
 /* ================= FIREBASE ADMIN INIT ================= */
-// We wrap initialization in a check to prevent multiple instances
+let firebaseReady = false;
+
 if (!admin.apps.length) {
   try {
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    // Replace literal \n strings with actual newline characters
     const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
     if (!projectId || !clientEmail || !privateKey) {
-      throw new Error("Missing Firebase Environment Variables");
+      throw new Error("Missing Firebase environment variables");
     }
 
     admin.initializeApp({
@@ -20,16 +20,26 @@ if (!admin.apps.length) {
         privateKey,
       }),
     });
-    
-    console.log("✅ Firebase Admin initialized via Env Vars");
+
+    firebaseReady = true;
+    console.log("✅ Firebase Admin initialized successfully");
   } catch (error) {
-    console.error("❌ Firebase Initialization Error:", error.message);
+    console.error("❌ Firebase Admin INIT FAILED:", error.message);
   }
+} else {
+  firebaseReady = true;
 }
 
 /* ================= AUTH MIDDLEWARE ================= */
 export const protect = async (req, res, next) => {
   try {
+    if (!firebaseReady) {
+      console.error("❌ Firebase Admin not initialized");
+      return res.status(500).json({
+        message: "Server auth configuration error",
+      });
+    }
+
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -38,13 +48,18 @@ export const protect = async (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
-    // Verify the token using the initialized admin SDK
     const decoded = await admin.auth().verifyIdToken(token);
-    req.user = decoded;
 
+    if (!decoded || !decoded.uid) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+
+    req.user = decoded;
     next();
   } catch (err) {
-    console.error("Auth error:", err.message);
-    return res.status(401).json({ message: "Invalid or expired token" });
+    console.error("❌ AUTH ERROR:", err.message);
+    return res.status(401).json({
+      message: "Invalid or expired token",
+    });
   }
 };
