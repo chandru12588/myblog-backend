@@ -34,22 +34,20 @@ export const createBlog = async (req, res) => {
 
 /* ================= GET ALL BLOGS ================= */
 export const getBlogs = async (_req, res) => {
-  try {
-    const blogs = await Blog.find().sort({ createdAt: -1 });
-    res.json(blogs);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to load blogs ❌" });
-  }
+  const blogs = await Blog.find().sort({ createdAt: -1 });
+  res.json(blogs);
 };
 
 /* ================= GET BLOG BY ID ================= */
 export const getBlogById = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
-    if (!blog)
+    if (!blog) {
       return res.status(404).json({ message: "Blog not found ❌" });
+    }
     res.json(blog);
   } catch (err) {
+    console.error("GET BLOG ERROR:", err);
     res.status(500).json({ message: "Failed to load blog ❌" });
   }
 };
@@ -58,40 +56,44 @@ export const getBlogById = async (req, res) => {
 export const getBlogBySlug = async (req, res) => {
   try {
     const blog = await Blog.findOne({ slug: req.params.slug });
-    if (!blog)
+    if (!blog) {
       return res.status(404).json({ message: "Blog not found ❌" });
+    }
     res.json(blog);
   } catch (err) {
+    console.error("GET BLOG SLUG ERROR:", err);
     res.status(500).json({ message: "Failed to load blog ❌" });
   }
 };
 
-/* ================= LIKE BLOG ================= */
+/* ================= ❤️ LIKE BLOG ================= */
 export const likeBlog = async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
-    const blog = await Blog.findById(req.params.id);
-    if (!blog)
-      return res.status(404).json({ message: "Blog not found ❌" });
-
-    const alreadyLiked = blog.likedBy.some(
-      (u) => u.uid === req.user.uid
+    const blog = await Blog.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        "likedBy.uid": { $ne: req.user.uid },
+      },
+      {
+        $inc: { likes: 1 },
+        $push: {
+          likedBy: {
+            uid: req.user.uid,
+            email: req.user.email,
+          },
+        },
+      },
+      { new: true }
     );
 
-    if (alreadyLiked) {
+    if (!blog) {
       return res.status(400).json({ message: "Already liked ❌" });
     }
 
-    blog.likes += 1;
-    blog.likedBy.push({
-      uid: req.user.uid,
-      email: req.user.email,
-    });
-
-    await blog.save();
     res.json(blog);
   } catch (err) {
     console.error("LIKE BLOG ERROR:", err);
@@ -99,31 +101,29 @@ export const likeBlog = async (req, res) => {
   }
 };
 
-/* ================= UNLIKE BLOG ================= */
+/* ================= 💔 UNLIKE BLOG ================= */
 export const unlikeBlog = async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
-    const blog = await Blog.findById(req.params.id);
-    if (!blog)
-      return res.status(404).json({ message: "Blog not found ❌" });
-
-    const index = blog.likedBy.findIndex(
-      (u) => u.uid === req.user.uid
+    const blog = await Blog.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        "likedBy.uid": req.user.uid,
+      },
+      {
+        $inc: { likes: -1 },
+        $pull: { likedBy: { uid: req.user.uid } },
+      },
+      { new: true }
     );
 
-    if (index === -1) {
-      return res
-        .status(400)
-        .json({ message: "You haven't liked this blog ❌" });
+    if (!blog) {
+      return res.status(400).json({ message: "Not liked yet ❌" });
     }
 
-    blog.likedBy.splice(index, 1);
-    blog.likes = Math.max(0, blog.likes - 1);
-
-    await blog.save();
     res.json(blog);
   } catch (err) {
     console.error("UNLIKE BLOG ERROR:", err);
@@ -131,25 +131,32 @@ export const unlikeBlog = async (req, res) => {
   }
 };
 
-/* ================= ADD COMMENT ================= */
+/* ================= 💬 ADD COMMENT ================= */
 export const addComment = async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
-    const blog = await Blog.findById(req.params.id);
-    if (!blog)
+    const blog = await Blog.findByIdAndUpdate(
+      req.params.id,
+      {
+        $push: {
+          comments: {
+            uid: req.user.uid,
+            email: req.user.email,
+            text: req.body.text,
+            date: new Date(),
+          },
+        },
+      },
+      { new: true }
+    );
+
+    if (!blog) {
       return res.status(404).json({ message: "Blog not found ❌" });
+    }
 
-    blog.comments.push({
-      uid: req.user.uid,
-      email: req.user.email,
-      text: req.body.text,
-      date: new Date(),
-    });
-
-    await blog.save();
     res.json(blog);
   } catch (err) {
     console.error("COMMENT ERROR:", err);
@@ -164,25 +171,28 @@ export const updateBlog = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
-    const blog = await Blog.findById(req.params.id);
-    if (!blog)
-      return res.status(404).json({ message: "Blog not found ❌" });
+    const slug = slugify(req.body.title, { lower: true });
 
-    if (blog.authorId !== req.user.uid) {
+    const blog = await Blog.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        authorId: req.user.uid,
+      },
+      {
+        $set: {
+          title: req.body.title,
+          content: req.body.content,
+          slug,
+          image: req.file?.path,
+        },
+      },
+      { new: true }
+    );
+
+    if (!blog) {
       return res.status(403).json({ message: "Access denied ❌" });
     }
 
-    blog.title = req.body.title || blog.title;
-    blog.content = req.body.content || blog.content;
-    blog.slug = slugify(blog.title, { lower: true });
-
-    if (req.file && blog.image) {
-      const publicId = blog.image.split("/").pop().split(".")[0];
-      await cloudinary.uploader.destroy(publicId);
-      blog.image = req.file.path;
-    }
-
-    await blog.save();
     res.json({ message: "Blog updated ✅", blog });
   } catch (err) {
     console.error("UPDATE BLOG ERROR:", err);
@@ -197,11 +207,12 @@ export const deleteBlog = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
-    const blog = await Blog.findById(req.params.id);
-    if (!blog)
-      return res.status(404).json({ message: "Blog not found ❌" });
+    const blog = await Blog.findOneAndDelete({
+      _id: req.params.id,
+      authorId: req.user.uid,
+    });
 
-    if (blog.authorId !== req.user.uid) {
+    if (!blog) {
       return res.status(403).json({ message: "Access denied ❌" });
     }
 
@@ -210,7 +221,6 @@ export const deleteBlog = async (req, res) => {
       await cloudinary.uploader.destroy(publicId);
     }
 
-    await blog.deleteOne();
     res.json({ message: "Blog deleted 🗑️" });
   } catch (err) {
     console.error("DELETE BLOG ERROR:", err);

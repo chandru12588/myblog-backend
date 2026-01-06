@@ -17,7 +17,6 @@ export const createProject = async (req, res) => {
       githubLink: req.body.githubLink,
       image: req.file?.path || "",
 
-      // 🔐 OWNER INFO
       ownerId: req.user.uid,
       ownerEmail: req.user.email,
 
@@ -36,24 +35,22 @@ export const createProject = async (req, res) => {
 
 /* ================= GET ALL PROJECTS ================= */
 export const getProjects = async (_req, res) => {
-  try {
-    const projects = await Project.find().sort({ createdAt: -1 });
-    res.json(projects);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to load projects ❌" });
-  }
+  const projects = await Project.find().sort({ createdAt: -1 });
+  res.json(projects);
 };
 
-/* ================= GET SINGLE PROJECT (+ VIEW COUNT) ================= */
+/* ================= GET PROJECT (+ VIEW COUNT) ================= */
 export const getProjectById = async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id);
+    const project = await Project.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+
     if (!project) {
       return res.status(404).json({ message: "Project not found ❌" });
     }
-
-    project.views += 1;
-    await project.save();
 
     res.json(project);
   } catch (err) {
@@ -62,33 +59,34 @@ export const getProjectById = async (req, res) => {
   }
 };
 
-/* ================= LIKE PROJECT ================= */
+/* ================= ❤️ LIKE PROJECT ================= */
 export const likeProject = async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
-    const project = await Project.findById(req.params.id);
-    if (!project) {
-      return res.status(404).json({ message: "Project not found ❌" });
-    }
-
-    const alreadyLiked = project.likedBy.some(
-      (u) => u.uid === req.user.uid
+    const project = await Project.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        "likedBy.uid": { $ne: req.user.uid },
+      },
+      {
+        $inc: { likes: 1 },
+        $push: {
+          likedBy: {
+            uid: req.user.uid,
+            email: req.user.email,
+          },
+        },
+      },
+      { new: true }
     );
 
-    if (alreadyLiked) {
+    if (!project) {
       return res.status(400).json({ message: "Already liked ❌" });
     }
 
-    project.likes += 1;
-    project.likedBy.push({
-      uid: req.user.uid,
-      email: req.user.email,
-    });
-
-    await project.save();
     res.json(project);
   } catch (err) {
     console.error("LIKE PROJECT ERROR:", err);
@@ -96,32 +94,29 @@ export const likeProject = async (req, res) => {
   }
 };
 
-/* ================= UNLIKE PROJECT ================= */
+/* ================= 💔 UNLIKE PROJECT ================= */
 export const unlikeProject = async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
-    const project = await Project.findById(req.params.id);
-    if (!project) {
-      return res.status(404).json({ message: "Project not found ❌" });
-    }
-
-    const index = project.likedBy.findIndex(
-      (u) => u.uid === req.user.uid
+    const project = await Project.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        "likedBy.uid": req.user.uid,
+      },
+      {
+        $inc: { likes: -1 },
+        $pull: { likedBy: { uid: req.user.uid } },
+      },
+      { new: true }
     );
 
-    if (index === -1) {
-      return res
-        .status(400)
-        .json({ message: "You haven't liked this project ❌" });
+    if (!project) {
+      return res.status(400).json({ message: "Not liked yet ❌" });
     }
 
-    project.likedBy.splice(index, 1);
-    project.likes = Math.max(0, project.likes - 1);
-
-    await project.save();
     res.json(project);
   } catch (err) {
     console.error("UNLIKE PROJECT ERROR:", err);
@@ -129,59 +124,62 @@ export const unlikeProject = async (req, res) => {
   }
 };
 
-/* ================= ADD COMMENT ================= */
+/* ================= 💬 ADD COMMENT ================= */
 export const addProjectComment = async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
-    const project = await Project.findById(req.params.id);
+    const project = await Project.findByIdAndUpdate(
+      req.params.id,
+      {
+        $push: {
+          comments: {
+            uid: req.user.uid,
+            email: req.user.email,
+            text: req.body.text,
+            date: new Date(),
+          },
+        },
+      },
+      { new: true }
+    );
+
     if (!project) {
       return res.status(404).json({ message: "Project not found ❌" });
     }
 
-    project.comments.push({
-      uid: req.user.uid,
-      email: req.user.email,
-      text: req.body.text,
-      date: new Date(),
-    });
-
-    await project.save();
     res.json(project);
   } catch (err) {
-    console.error("ADD COMMENT ERROR:", err);
+    console.error("COMMENT ERROR:", err);
     res.status(500).json({ message: "Comment failed ❌" });
   }
 };
 
-/* ================= DELETE OWN COMMENT ================= */
+/* ================= 🗑 DELETE OWN COMMENT ================= */
 export const deleteProjectComment = async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
-    const { id, commentId } = req.params;
+    const project = await Project.findByIdAndUpdate(
+      req.params.id,
+      {
+        $pull: {
+          comments: {
+            _id: req.params.commentId,
+            uid: req.user.uid,
+          },
+        },
+      },
+      { new: true }
+    );
 
-    const project = await Project.findById(id);
     if (!project) {
       return res.status(404).json({ message: "Project not found ❌" });
     }
-
-    const index = project.comments.findIndex(
-      (c) =>
-        c._id.toString() === commentId &&
-        c.uid === req.user.uid
-    );
-
-    if (index === -1) {
-      return res.status(403).json({ message: "Not authorized ❌" });
-    }
-
-    project.comments.splice(index, 1);
-    await project.save();
 
     res.json(project);
   } catch (err) {
@@ -197,28 +195,30 @@ export const updateProject = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
-    const project = await Project.findById(req.params.id);
-    if (!project) {
-      return res.status(404).json({ message: "Project not found ❌" });
-    }
+    const project = await Project.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        ownerId: req.user.uid,
+      },
+      {
+        $set: {
+          title: req.body.title,
+          description: req.body.description,
+          techStack: req.body.techStack
+            ? req.body.techStack.split(",")
+            : [],
+          liveLink: req.body.liveLink,
+          githubLink: req.body.githubLink,
+          image: req.file?.path,
+        },
+      },
+      { new: true }
+    );
 
-    if (project.ownerId !== req.user.uid) {
+    if (!project) {
       return res.status(403).json({ message: "Access denied ❌" });
     }
 
-    project.title = req.body.title || project.title;
-    project.description = req.body.description || project.description;
-    project.techStack = req.body.techStack
-      ? req.body.techStack.split(",")
-      : project.techStack;
-    project.liveLink = req.body.liveLink || project.liveLink;
-    project.githubLink = req.body.githubLink || project.githubLink;
-
-    if (req.file) {
-      project.image = req.file.path;
-    }
-
-    await project.save();
     res.json(project);
   } catch (err) {
     console.error("UPDATE PROJECT ERROR:", err);
@@ -233,16 +233,15 @@ export const deleteProject = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
-    const project = await Project.findById(req.params.id);
-    if (!project) {
-      return res.status(404).json({ message: "Project not found ❌" });
-    }
+    const project = await Project.findOneAndDelete({
+      _id: req.params.id,
+      ownerId: req.user.uid,
+    });
 
-    if (project.ownerId !== req.user.uid) {
+    if (!project) {
       return res.status(403).json({ message: "Access denied ❌" });
     }
 
-    await project.deleteOne();
     res.json({ message: "Project deleted 🗑️" });
   } catch (err) {
     console.error("DELETE PROJECT ERROR:", err);
