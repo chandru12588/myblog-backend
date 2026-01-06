@@ -15,11 +15,12 @@ export const createBlog = async (req, res) => {
       content: req.body.content,
       image: req.file ? req.file.path : "",
 
-      // 🔐 OWNER INFO (SECURE)
+      // 🔐 OWNER INFO
       authorId: req.user.uid,
       authorEmail: req.user.email,
 
       likes: 0,
+      likedBy: [],
       comments: [],
     });
 
@@ -67,16 +68,30 @@ export const getBlogBySlug = async (req, res) => {
   }
 };
 
-/* ================= LIKE BLOG ================= */
+/* ================= LIKE BLOG (SECURE) ================= */
 export const likeBlog = async (req, res) => {
   try {
-    const blog = await Blog.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { likes: 1 } },
-      { new: true }
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found ❌" });
+    }
+
+    // 🔐 Prevent double-like
+    const alreadyLiked = blog.likedBy.find(
+      (u) => u.uid === req.user.uid
     );
 
-    if (!blog) return res.status(404).json({ message: "Blog not found ❌" });
+    if (alreadyLiked) {
+      return res.status(400).json({ message: "Already liked ❌" });
+    }
+
+    blog.likes += 1;
+    blog.likedBy.push({
+      uid: req.user.uid,
+      email: req.user.email,
+    });
+
+    await blog.save();
     res.json(blog);
   } catch (err) {
     res.status(500).json({ message: "Like failed ❌" });
@@ -108,7 +123,7 @@ export const updateBlog = async (req, res) => {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ message: "Blog not found ❌" });
 
-    // 🔐 OWNER CHECK (MAIN FIX)
+    // 🔐 OWNER CHECK
     if (blog.authorId !== req.user.uid) {
       return res.status(403).json({ message: "Access denied ❌" });
     }
@@ -117,7 +132,6 @@ export const updateBlog = async (req, res) => {
     blog.content = req.body.content || blog.content;
     blog.slug = slugify(blog.title, { lower: true });
 
-    // 🧹 DELETE OLD IMAGE IF NEW IMAGE UPLOADED
     if (req.file && blog.image) {
       const publicId = blog.image.split("/").pop().split(".")[0];
       await cloudinary.uploader.destroy(publicId);
@@ -140,7 +154,7 @@ export const deleteBlog = async (req, res) => {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ message: "Blog not found ❌" });
 
-    // 🔐 OWNER CHECK (MAIN FIX)
+    // 🔐 OWNER CHECK
     if (blog.authorId !== req.user.uid) {
       return res.status(403).json({ message: "Access denied ❌" });
     }

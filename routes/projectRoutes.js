@@ -5,6 +5,10 @@ import {
   getProjectById,
   updateProject,
   deleteProject,
+  likeProject,
+  unlikeProject,
+  addProjectComment,
+  deleteProjectComment,
 } from "../controllers/projectController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
@@ -14,6 +18,7 @@ import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 const cloudinary = cloudinaryModule.v2;
 
+/* ================= CLOUDINARY STORAGE ================= */
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
@@ -25,13 +30,25 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage });
 const router = express.Router();
 
-/* PUBLIC */
+/* ================= PUBLIC ================= */
 router.get("/", getProjects);
-router.get("/:id", getProjectById);
+router.get("/:id", getProjectById); // 👀 auto increments views
 
-/* PROTECTED */
+/* ================= PROTECTED ================= */
 router.post("/", protect, upload.single("image"), createProject);
-router.put("/:id", protect, upload.single("image"), updateProject); // ✅ FIX
-router.delete("/:id", protect, deleteProject); // ✅ FIX
+router.put("/:id", protect, upload.single("image"), updateProject);
+router.delete("/:id", protect, deleteProject);
+
+/* ================= ❤️ LIKE / 💔 UNLIKE ================= */
+router.patch("/like/:id", protect, likeProject);
+router.patch("/unlike/:id", protect, unlikeProject);
+
+/* ================= 💬 COMMENTS ================= */
+router.post("/comment/:id", protect, addProjectComment);
+router.delete(
+  "/comment/:id/:commentId",
+  protect,
+  deleteProjectComment
+);
 
 export default router;

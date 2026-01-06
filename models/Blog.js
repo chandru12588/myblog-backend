@@ -18,6 +18,20 @@ const commentSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const likedBySchema = new mongoose.Schema(
+  {
+    uid: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+    },
+  },
+  { _id: false }
+);
+
 const blogSchema = new mongoose.Schema(
   {
     title: {
@@ -44,24 +58,29 @@ const blogSchema = new mongoose.Schema(
       default: "",
     },
 
-    // 🔐 OWNER ID (Firebase UID) — MAIN SECURITY FIELD
+    // 🔐 OWNER ID (Firebase UID)
     authorId: {
       type: String,
       required: true,
       index: true,
     },
 
-    // Optional (for display only)
+    // 📧 For display only
     authorEmail: {
       type: String,
       required: true,
     },
 
+    // ❤️ Likes count
     likes: {
       type: Number,
       default: 0,
     },
 
+    // ❤️ Who liked (secure)
+    likedBy: [likedBySchema],
+
+    // 💬 Comments
     comments: [commentSchema],
   },
   { timestamps: true }
