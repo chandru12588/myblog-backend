@@ -1,9 +1,14 @@
 import mongoose from "mongoose";
 
+/* ================= COMMENT SCHEMA ================= */
 const commentSchema = new mongoose.Schema(
   {
-    user: {
-      type: String, // commenter email
+    uid: {
+      type: String,       // Firebase UID
+      required: true,
+    },
+    email: {
+      type: String,       // commenter email
       required: true,
     },
     text: {
@@ -15,9 +20,10 @@ const commentSchema = new mongoose.Schema(
       default: Date.now,
     },
   },
-  { _id: false }
+  { _id: true }            // keep _id for delete comment
 );
 
+/* ================= LIKED BY SCHEMA ================= */
 const likedBySchema = new mongoose.Schema(
   {
     uid: {
@@ -32,6 +38,7 @@ const likedBySchema = new mongoose.Schema(
   { _id: false }
 );
 
+/* ================= BLOG SCHEMA ================= */
 const blogSchema = new mongoose.Schema(
   {
     title: {
@@ -58,29 +65,28 @@ const blogSchema = new mongoose.Schema(
       default: "",
     },
 
-    // 🔐 OWNER ID (Firebase UID)
+    /* 🔐 OWNER (SECURITY) */
     authorId: {
-      type: String,
+      type: String,       // Firebase UID
       required: true,
       index: true,
     },
 
-    // 📧 For display only
+    /* 📧 DISPLAY ONLY */
     authorEmail: {
       type: String,
       required: true,
     },
 
-    // ❤️ Likes count
+    /* ❤️ LIKES */
     likes: {
       type: Number,
       default: 0,
     },
 
-    // ❤️ Who liked (secure)
     likedBy: [likedBySchema],
 
-    // 💬 Comments
+    /* 💬 COMMENTS */
     comments: [commentSchema],
   },
   { timestamps: true }

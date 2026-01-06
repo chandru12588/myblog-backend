@@ -50,7 +50,8 @@ export const getBlogs = async (_req, res) => {
 export const getBlogById = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
-    if (!blog) return res.status(404).json({ message: "Blog not found ❌" });
+    if (!blog)
+      return res.status(404).json({ message: "Blog not found ❌" });
     res.json(blog);
   } catch (err) {
     res.status(500).json({ message: "Failed to load blog ❌" });
@@ -61,23 +62,22 @@ export const getBlogById = async (req, res) => {
 export const getBlogBySlug = async (req, res) => {
   try {
     const blog = await Blog.findOne({ slug: req.params.slug });
-    if (!blog) return res.status(404).json({ message: "Blog not found ❌" });
+    if (!blog)
+      return res.status(404).json({ message: "Blog not found ❌" });
     res.json(blog);
   } catch (err) {
     res.status(500).json({ message: "Failed to load blog ❌" });
   }
 };
 
-/* ================= LIKE BLOG (SECURE) ================= */
+/* ================= LIKE BLOG ================= */
 export const likeBlog = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
-    if (!blog) {
+    if (!blog)
       return res.status(404).json({ message: "Blog not found ❌" });
-    }
 
-    // 🔐 Prevent double-like
-    const alreadyLiked = blog.likedBy.find(
+    const alreadyLiked = blog.likedBy.some(
       (u) => u.uid === req.user.uid
     );
 
@@ -98,14 +98,43 @@ export const likeBlog = async (req, res) => {
   }
 };
 
+/* ================= UNLIKE BLOG ================= */
+export const unlikeBlog = async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id);
+    if (!blog)
+      return res.status(404).json({ message: "Blog not found ❌" });
+
+    const index = blog.likedBy.findIndex(
+      (u) => u.uid === req.user.uid
+    );
+
+    if (index === -1) {
+      return res
+        .status(400)
+        .json({ message: "You haven't liked this blog ❌" });
+    }
+
+    blog.likedBy.splice(index, 1);
+    blog.likes = Math.max(0, blog.likes - 1);
+
+    await blog.save();
+    res.json(blog);
+  } catch (err) {
+    res.status(500).json({ message: "Unlike failed ❌" });
+  }
+};
+
 /* ================= ADD COMMENT ================= */
 export const addComment = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
-    if (!blog) return res.status(404).json({ message: "Blog not found ❌" });
+    if (!blog)
+      return res.status(404).json({ message: "Blog not found ❌" });
 
     blog.comments.push({
-      user: req.user.email,
+      uid: req.user.uid,
+      email: req.user.email,
       text: req.body.text,
       date: new Date(),
     });
@@ -121,7 +150,8 @@ export const addComment = async (req, res) => {
 export const updateBlog = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
-    if (!blog) return res.status(404).json({ message: "Blog not found ❌" });
+    if (!blog)
+      return res.status(404).json({ message: "Blog not found ❌" });
 
     // 🔐 OWNER CHECK
     if (blog.authorId !== req.user.uid) {
@@ -152,7 +182,8 @@ export const updateBlog = async (req, res) => {
 export const deleteBlog = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
-    if (!blog) return res.status(404).json({ message: "Blog not found ❌" });
+    if (!blog)
+      return res.status(404).json({ message: "Blog not found ❌" });
 
     // 🔐 OWNER CHECK
     if (blog.authorId !== req.user.uid) {

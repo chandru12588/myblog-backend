@@ -7,18 +7,19 @@ import {
   createBlog,
   getBlogs,
   getBlogById,
-  getBlogBySlug,      // ✅ SEO
+  getBlogBySlug,
   updateBlog,
   deleteBlog,
   likeBlog,
-  addComment          // ✅ Comments
+  unlikeBlog,
+  addComment,
 } from "../controllers/blogController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-/* ================= CLOUDINARY CONFIG ================= */
+/* ================= CLOUDINARY ================= */
 const cloudinary = cloudinaryModule.v2;
 
 const storage = new CloudinaryStorage({
@@ -31,46 +32,21 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-/* ================= BLOG ROUTES ================= */
-
-/* 🌍 PUBLIC ROUTES */
+/* ================= PUBLIC ================= */
 router.get("/", getBlogs);
-
-// 🔍 SEO FRIENDLY READ MORE
 router.get("/slug/:slug", getBlogBySlug);
 
-// 📖 Single blog by ID (used internally)
+/* ================= ❤️ LIKE / 💔 UNLIKE ================= */
+router.patch("/like/:id", protect, likeBlog);
+router.patch("/unlike/:id", protect, unlikeBlog);
+
+/* ================= 💬 COMMENT ================= */
+router.post("/comment/:id", protect, addComment);
+
+/* ================= CRUD (KEEP :id LAST) ================= */
 router.get("/:id", getBlogById);
-
-// ❤️ Like blog
-router.patch("/like/:id", likeBlog);
-
-/* 🔐 PROTECTED ROUTES */
-router.post(
-  "/",
-  protect,
-  upload.single("image"),
-  createBlog
-);
-
-router.put(
-  "/:id",
-  protect,
-  upload.single("image"),
-  updateBlog
-);
-
-router.delete(
-  "/:id",
-  protect,
-  deleteBlog
-);
-
-// 💬 Add comment
-router.post(
-  "/:id/comment",
-  protect,
-  addComment
-);
+router.post("/", protect, upload.single("image"), createBlog);
+router.put("/:id", protect, upload.single("image"), updateBlog);
+router.delete("/:id", protect, deleteBlog);
 
 export default router;

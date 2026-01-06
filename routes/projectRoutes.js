@@ -32,12 +32,6 @@ const router = express.Router();
 
 /* ================= PUBLIC ================= */
 router.get("/", getProjects);
-router.get("/:id", getProjectById); // 👀 auto increments views
-
-/* ================= PROTECTED ================= */
-router.post("/", protect, upload.single("image"), createProject);
-router.put("/:id", protect, upload.single("image"), updateProject);
-router.delete("/:id", protect, deleteProject);
 
 /* ================= ❤️ LIKE / 💔 UNLIKE ================= */
 router.patch("/like/:id", protect, likeProject);
@@ -45,10 +39,12 @@ router.patch("/unlike/:id", protect, unlikeProject);
 
 /* ================= 💬 COMMENTS ================= */
 router.post("/comment/:id", protect, addProjectComment);
-router.delete(
-  "/comment/:id/:commentId",
-  protect,
-  deleteProjectComment
-);
+router.delete("/comment/:id/:commentId", protect, deleteProjectComment);
+
+/* ================= CRUD ================= */
+router.get("/:id", getProjectById); // 👀 view count
+router.post("/", protect, upload.single("image"), createProject);
+router.put("/:id", protect, upload.single("image"), updateProject);
+router.delete("/:id", protect, deleteProject);
 
 export default router;
