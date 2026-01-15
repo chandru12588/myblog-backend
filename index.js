@@ -11,6 +11,8 @@ import cloudinaryModule from "cloudinary";
 // ================== ROUTES ==================
 import blogRoutes from "./routes/blogRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
+import cvRoutes from "./routes/cvRoutes.js";
+
 
 // ================== APP ==================
 const app = express();
@@ -52,6 +54,8 @@ app.get("/health", (req, res) => {
 // ================== API ROUTES ==================
 app.use("/api/blogs", blogRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/cv", cvRoutes);
+
 
 // ================== START SERVER ==================
 const PORT = process.env.PORT || 5000;
