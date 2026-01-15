@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 
-import cloudinary from "../config/cloudinary.js"; // ✅ USE CONFIGURED INSTANCE
+import cloudinary from "../cloudinary.js"; // ✅ USE CONFIGURED INSTANCE
 import { uploadCV, deleteCV, getCV } from "../controllers/cvController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
