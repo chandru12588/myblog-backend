@@ -1,5 +1,5 @@
 import Cv from "../models/Cv.js";
-import cloudinary from "../config/cloudinary.js"; // ✅ USE CONFIGURED INSTANCE
+import cloudinary from "../cloudinary.js"; // ✅ USE CONFIGURED INSTANCE
 
 /* ================= UPLOAD CV ================= */
 export const uploadCV = async (req, res) => {
