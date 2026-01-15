@@ -1,50 +1,54 @@
-import cloudinaryModule from "cloudinary";
+import Cv from "../models/Cv.js";
+import cloudinary from "cloudinary";
 
-const cloudinary = cloudinaryModule.v2;
-
-const ADMIN_EMAIL = "chandru.balasub12588@gmail.com";
-
-/* ================= UPLOAD / UPDATE CV ================= */
+/* ================= UPLOAD CV ================= */
 export const uploadCV = async (req, res) => {
   try {
-    if (!req.user || req.user.email !== ADMIN_EMAIL) {
-      return res.status(403).json({ message: "Admin only ❌" });
-    }
-
     if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded ❌" });
+      return res.status(400).json({ message: "No file uploaded" });
     }
 
-    return res.json({
-      message: "CV uploaded successfully ✅",
-      cvUrl: req.file.path, // Cloudinary URL
+    // delete old CV if exists
+    const existing = await Cv.findOne();
+    if (existing) {
+      await cloudinary.v2.uploader.destroy(existing.publicId);
+      await existing.deleteOne();
+    }
+
+    const cv = await Cv.create({
+      url: req.file.path,
+      publicId: req.file.filename,
+      uploadedBy: req.user.email,
     });
+
+    res.json({ cvUrl: cv.url });
   } catch (err) {
     console.error("UPLOAD CV ERROR:", err);
-    res.status(500).json({ message: "CV upload failed ❌" });
+    res.status(500).json({ message: "Upload failed" });
   }
+};
+
+/* ================= GET CV ================= */
+export const getCV = async (_req, res) => {
+  const cv = await Cv.findOne();
+  if (!cv) return res.json(null);
+  res.json(cv);
 };
 
 /* ================= DELETE CV ================= */
 export const deleteCV = async (req, res) => {
   try {
-    if (!req.user || req.user.email !== ADMIN_EMAIL) {
-      return res.status(403).json({ message: "Admin only ❌" });
+    const cv = await Cv.findOne();
+    if (!cv) {
+      return res.status(404).json({ message: "No CV found" });
     }
 
-    const { publicId } = req.body;
+    await cloudinary.v2.uploader.destroy(cv.publicId);
+    await cv.deleteOne();
 
-    if (!publicId) {
-      return res.status(400).json({ message: "Public ID required ❌" });
-    }
-
-    await cloudinary.uploader.destroy(publicId, {
-      resource_type: "raw",
-    });
-
-    res.json({ message: "CV deleted successfully 🗑" });
+    res.json({ message: "CV deleted" });
   } catch (err) {
     console.error("DELETE CV ERROR:", err);
-    res.status(500).json({ message: "CV delete failed ❌" });
+    res.status(500).json({ message: "Delete failed" });
   }
 };

@@ -2,14 +2,12 @@ import express from "express";
 import multer from "multer";
 import cloudinaryModule from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
-
-import { uploadCV, deleteCV } from "../controllers/cvController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { uploadCV, getCV, deleteCV } from "../controllers/cvController.js";
 
 const router = express.Router();
 const cloudinary = cloudinaryModule.v2;
 
-/* ================= CLOUDINARY STORAGE ================= */
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
@@ -21,7 +19,7 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-/* ================= ROUTES ================= */
+router.get("/", getCV);
 router.post("/upload", protect, upload.single("cv"), uploadCV);
 router.delete("/delete", protect, deleteCV);
 
