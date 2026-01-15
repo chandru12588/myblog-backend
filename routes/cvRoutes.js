@@ -1,18 +1,19 @@
 import express from "express";
 import multer from "multer";
-import cloudinaryModule from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
+import cloudinary from "cloudinary";
+
+import { uploadCV, deleteCV, getCV } from "../controllers/cvController.js";
 import { protect } from "../middleware/authMiddleware.js";
-import { uploadCV, getCV, deleteCV } from "../controllers/cvController.js";
 
 const router = express.Router();
-const cloudinary = cloudinaryModule.v2;
 
+/* ✅ RAW upload for PDF */
 const storage = new CloudinaryStorage({
-  cloudinary,
+  cloudinary: cloudinary.v2,
   params: {
     folder: "cv",
-    resource_type: "raw", // IMPORTANT for PDF
+    resource_type: "raw",        // 🔥 REQUIRED
     allowed_formats: ["pdf"],
   },
 });
