@@ -1,5 +1,5 @@
 import Cv from "../models/Cv.js";
-import cloudinary from "cloudinary";
+import cloudinary from "../config/cloudinary.js"; // ✅ USE CONFIGURED INSTANCE
 
 /* ================= UPLOAD CV ================= */
 export const uploadCV = async (req, res) => {
@@ -8,17 +8,19 @@ export const uploadCV = async (req, res) => {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // delete old CV
+    // delete old CV if exists
     const existing = await Cv.findOne();
     if (existing) {
-      await cloudinary.v2.uploader.destroy(existing.publicId, {
+      await cloudinary.uploader.destroy(existing.publicId, {
         resource_type: "raw",
       });
       await existing.deleteOne();
     }
 
-    const viewUrl = req.file.path; // raw file url
+    // RAW PDF URL (view)
+    const viewUrl = req.file.path;
 
+    // FORCE DOWNLOAD URL
     const downloadUrl = viewUrl.replace(
       "/raw/upload/",
       "/raw/upload/fl_attachment/"
@@ -45,18 +47,22 @@ export const uploadCV = async (req, res) => {
 export const getCV = async (_req, res) => {
   const cv = await Cv.findOne();
   if (!cv) return res.json(null);
-  res.json(cv);
+
+  res.json({
+    viewUrl: cv.viewUrl,
+    downloadUrl: cv.downloadUrl,
+  });
 };
 
 /* ================= DELETE CV ================= */
-export const deleteCV = async (req, res) => {
+export const deleteCV = async (_req, res) => {
   try {
     const cv = await Cv.findOne();
     if (!cv) {
       return res.status(404).json({ message: "No CV found" });
     }
 
-    await cloudinary.v2.uploader.destroy(cv.publicId, {
+    await cloudinary.uploader.destroy(cv.publicId, {
       resource_type: "raw",
     });
 
