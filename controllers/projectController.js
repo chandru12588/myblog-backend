@@ -7,12 +7,19 @@ export const createProject = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
+    // ✅ FIXED techStack handling
+    let techStack = [];
+
+    if (Array.isArray(req.body.techStack)) {
+      techStack = req.body.techStack;
+    } else if (typeof req.body.techStack === "string") {
+      techStack = req.body.techStack.split(",").map(item => item.trim());
+    }
+
     const project = await Project.create({
       title: req.body.title,
       description: req.body.description,
-      techStack: req.body.techStack
-        ? req.body.techStack.split(",")
-        : [],
+      techStack: techStack,
       liveLink: req.body.liveLink,
       githubLink: req.body.githubLink,
       image: req.file?.path || "",
@@ -195,6 +202,15 @@ export const updateProject = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized ❌" });
     }
 
+    // ✅ FIXED techStack handling
+    let techStack = [];
+
+    if (Array.isArray(req.body.techStack)) {
+      techStack = req.body.techStack;
+    } else if (typeof req.body.techStack === "string") {
+      techStack = req.body.techStack.split(",").map(item => item.trim());
+    }
+
     const project = await Project.findOneAndUpdate(
       {
         _id: req.params.id,
@@ -204,12 +220,12 @@ export const updateProject = async (req, res) => {
         $set: {
           title: req.body.title,
           description: req.body.description,
-          techStack: req.body.techStack
-            ? req.body.techStack.split(",")
-            : [],
+          techStack: techStack,
           liveLink: req.body.liveLink,
           githubLink: req.body.githubLink,
-          image: req.file?.path,
+
+          // ✅ only update image if new file exists
+          ...(req.file && { image: req.file.path }),
         },
       },
       { new: true }
